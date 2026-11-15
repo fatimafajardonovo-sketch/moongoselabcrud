@@ -41,6 +41,7 @@ export default async function handler(req,res) {
                 return res.status(200).json({total: tickets.length, datos: tickets});
         }
         // Si method no coincide con get, la rta no admite esa operacion, 405 metodo no permitido
+        res.setHeader("Allow", ["GET"]);
         return res.status(405).json({ error: `Método ${method} no permitido` });
 
 
