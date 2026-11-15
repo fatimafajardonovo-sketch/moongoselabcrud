@@ -85,9 +85,28 @@ export default async function handler(req,res) {
                 ticket: ticketModificado,
             });
         }
+        if (method === "DELETE") {
+            const {codigo} = req.query;
+            if (!codigo) {
+                return res
+                .status (400)
+                .json({error: "Dees indicar el codigo ?codigo=BUG-XXX en la rl ( el qe qieres orrar)"})
+            }
+            const eliminado = await Ticket.findOneAndDelete (
+            { codigo: codigo.toUpperCase() },
+            )
+            if (!eliminado) {
+                return res.status(404).json({ error: "Ticket no eliminado" });
+            }
+
+            return res.status(200).json({
+                mensaje: "Ticket eliminado con éxito",
+                ticket: eliminado,
+            });
+        }
 
         // Si el método no coincide con GET, POST o PATCH, la respuesta no admite esa operación
-        res.setHeader("Allow", ["GET", "POST", "PATCH"]);
+        res.setHeader("Allow", ["GET", "POST", "PATCH", "DELETE"]);
         return res.status(405).json({ error: `Método ${method} no permitido` });
 
 }
