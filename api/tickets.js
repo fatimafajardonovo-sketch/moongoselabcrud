@@ -40,17 +40,67 @@ export default async function handler(req,res) {
                 const tickets = await Ticket.find(filtro).sort({ createdAt: -1 });
                 return res.status(200).json({total: tickets.length, datos: tickets});
         }
+
+        // 2 Post
+            if ( method=== "Post") {
+                // req.ody contiene los datos enviados por nosotros o el cliente
+                // create valida y garda el nevo docmento 
+                const nuevoTicket = await Ticket.create(req.body);
+                return res.status(201).json({
+                    mensaje: "Ticket nevo creado con exito",
+                    ticket: nuevoTicket,
+                })
+            }
+
+        
+        // PATCH: actaliza estados, agente o sma horas por codigo. Actaliza partes no todo, no lo actaliza por completo
+       if ( method=== "patch") {
+        const {codigo} = req.query;
+        const {estado, agenteAsignado, sumarHoras, nuevaetiqueta} = req.body;
+
+        // Sin codigo no se pede saer qe ticket actalizar, osea valida
+
+        if (!codigo) {
+            return res.status(400).json({error: "Debes indicar el código en la rl ?codigo=BUG-XXX"})
+        }
+        // Los operadores de actalizacion expresan qe camios se hacen sin sstitir el doc enterio: $set
+        // el set asigna campos
+        const actualizacion = {$set: {}}
+        // En algnos if omitimos las llaves or qe controlan na nica asignacion
+        if (estado) actualizacion.$set.estado = estado;
+        if (agenteAsignado) actualizacion.$set.agenteAsignado = agenteAsignado;
+        // SmarHiras llega desde el cerpo de la petición, Nmer lo convierte en nmero
+        // samos inc para incrementar en  la ase de datos
+        if (sumarHoras) actualizacion.$inc = {horasInvertidas: Number(sumarHoras)};
+        // Psh añade n elmento al final del array
+        if (nuevaetiqueta) actualizacion.$push = {etiquetas: nuevaetiqueta}
+
+        const ticketModificado = await Ticket.findOneAndUpdate (
+            {codigo: codigo.toUpperCase()},
+            actualizacion,
+            {new: true, runValidators: true}
+        )
+        if (!ticketModificado) {
+            return res.status(400).json({error:"Ticket no encontrado"})
+        }
+        return res.status (200).json ({
+            mensaje: "Ticket actalizado con exito",
+            ticket: ticketModificado,
+        });
+        }
+        
+
         // Si method no coincide con get, la rta no admite esa operacion, 405 metodo no permitido
         res.setHeader("Allow", ["GET"]);
         return res.status(405).json({ error: `Método ${method} no permitido` });
 
+}
 
-    }
+
     catch (error)  {
         return res.status(500).json({
             error: "Error en la operación CRUD",
             detalle: error.message
         });
     }
-    
 }
