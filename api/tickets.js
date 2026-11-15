@@ -37,8 +37,8 @@ export default async function handler(req,res) {
                 }
                 // sort createdat -1 ordena de mas reciente a mas antigo
                 // Develve el tanto de total de docmentos comprados
-                const tickets = (await Ticket.find (filtro)).toSorted[{creartedAt: -1}];
-                return res.status(200).json [{total: tickets.length, datos: tickets}]
+                const tickets = await Ticket.find(filtro).sort({ createdAt: -1 });
+                return res.status(200).json({total: tickets.length, datos: tickets});
         }
         // Si method no coincide con get, la rta no admite esa operacion, 405 metodo no permitido
         return res.status(405).json [{error: 'Metodo ${method} no permitido'}]
