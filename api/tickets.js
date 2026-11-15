@@ -41,57 +41,53 @@ export default async function handler(req,res) {
                 return res.status(200).json({total: tickets.length, datos: tickets});
         }
 
-        // 2 Post
-            if ( method=== "Post") {
-                // req.ody contiene los datos enviados por nosotros o el cliente
-                // create valida y garda el nevo docmento 
-                const nuevoTicket = await Ticket.create(req.body);
-                return res.status(201).json({
-                    mensaje: "Ticket nevo creado con exito",
-                    ticket: nuevoTicket,
-                })
+        // 2. POST: crear un nuevo ticket
+        if (method === "POST") {
+            // req.body contiene los datos enviados por el cliente
+            // create valida y guarda el nuevo documento
+            const nuevoTicket = await Ticket.create(req.body);
+            return res.status(201).json({
+                mensaje: "Ticket nuevo creado con éxito",
+                ticket: nuevoTicket,
+            });
+        }
+
+        // PATCH: actualiza estados, agente o suma horas por código. Actualiza partes, no todo el documento
+        if (method === "PATCH") {
+            const { codigo } = req.query;
+            const { estado, agenteAsignado, sumarHoras, nuevaetiqueta } = req.body;
+
+            // Sin código no se puede saber qué ticket actualizar
+            if (!codigo) {
+                return res.status(400).json({ error: "Debes indicar el código en la URL ?codigo=BUG-XXX" });
             }
 
-        
-        // PATCH: actaliza estados, agente o sma horas por codigo. Actaliza partes no todo, no lo actaliza por completo
-       if ( method=== "patch") {
-        const {codigo} = req.query;
-        const {estado, agenteAsignado, sumarHoras, nuevaetiqueta} = req.body;
+            // Los operadores de actualización expresan qué cambios se hacen sin sustituir el documento entero: $set
+            const actualizacion = { $set: {} };
 
-        // Sin codigo no se pede saer qe ticket actalizar, osea valida
+            if (estado) actualizacion.$set.estado = estado;
+            if (agenteAsignado) actualizacion.$set.agenteAsignado = agenteAsignado;
+            if (sumarHoras) actualizacion.$inc = { horasInvertidas: Number(sumarHoras) };
+            if (nuevaetiqueta) actualizacion.$push = { etiquetas: nuevaetiqueta };
 
-        if (!codigo) {
-            return res.status(400).json({error: "Debes indicar el código en la rl ?codigo=BUG-XXX"})
+            const ticketModificado = await Ticket.findOneAndUpdate(
+                { codigo: codigo.toUpperCase() },
+                actualizacion,
+                { new: true, runValidators: true }
+            );
+
+            if (!ticketModificado) {
+                return res.status(404).json({ error: "Ticket no encontrado" });
+            }
+
+            return res.status(200).json({
+                mensaje: "Ticket actualizado con éxito",
+                ticket: ticketModificado,
+            });
         }
-        // Los operadores de actalizacion expresan qe camios se hacen sin sstitir el doc enterio: $set
-        // el set asigna campos
-        const actualizacion = {$set: {}}
-        // En algnos if omitimos las llaves or qe controlan na nica asignacion
-        if (estado) actualizacion.$set.estado = estado;
-        if (agenteAsignado) actualizacion.$set.agenteAsignado = agenteAsignado;
-        // SmarHiras llega desde el cerpo de la petición, Nmer lo convierte en nmero
-        // samos inc para incrementar en  la ase de datos
-        if (sumarHoras) actualizacion.$inc = {horasInvertidas: Number(sumarHoras)};
-        // Psh añade n elmento al final del array
-        if (nuevaetiqueta) actualizacion.$push = {etiquetas: nuevaetiqueta}
 
-        const ticketModificado = await Ticket.findOneAndUpdate (
-            {codigo: codigo.toUpperCase()},
-            actualizacion,
-            {new: true, runValidators: true}
-        )
-        if (!ticketModificado) {
-            return res.status(400).json({error:"Ticket no encontrado"})
-        }
-        return res.status (200).json ({
-            mensaje: "Ticket actalizado con exito",
-            ticket: ticketModificado,
-        });
-        }
-        
-
-        // Si method no coincide con get, la rta no admite esa operacion, 405 metodo no permitido
-        res.setHeader("Allow", ["GET"]);
+        // Si el método no coincide con GET, POST o PATCH, la respuesta no admite esa operación
+        res.setHeader("Allow", ["GET", "POST", "PATCH"]);
         return res.status(405).json({ error: `Método ${method} no permitido` });
 
 }
